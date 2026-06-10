@@ -1,0 +1,51 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust (stable, Windows MSVC)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm install
+
+      # Crea un PNG 512x512 morado con ImageMagick (pre-instalado en windows-latest)
+      - name: Create source icon
+        run: magick -size 512x512 xc:#7c5cff icon-source.png
+
+      # Genera todos los tamaños de icono que Tauri requiere
+      - name: Generate Tauri icons
+        run: npm run tauri -- icon icon-source.png
+
+      - name: Build Tauri app (MSI + NSIS)
+        run: npm run tauri -- build
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: mis-apps-windows
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
