@@ -10,10 +10,34 @@ fn open_url(url: String) {
     }
 }
 
+#[tauri::command]
+fn run_cmd(cmd: String) -> Result<(), String> {
+    if cmd.trim().is_empty() {
+        return Ok(());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .args(["/C", cmd.as_str()])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW — sin consola visible
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("sh")
+            .args(["-c", cmd.as_str()])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_url])
+        .invoke_handler(tauri::generate_handler![open_url, run_cmd])
         .setup(|app| {
             WebviewWindowBuilder::new(
                 app,

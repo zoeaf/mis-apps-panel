@@ -269,6 +269,11 @@
         <p class="hint">Web, localhost (ej. http://localhost:5051) o archivo local (empezá con file:///).</p>
       </div>
       <div class="field">
+        <label for="f-cmd">Comando de inicio <span style="font-weight:400;color:var(--ink-faint)">(opcional)</span></label>
+        <input type="text" id="f-cmd" placeholder="Ej: python C:/mis-apps/sueldos/app.py">
+        <p class="hint">Al hacer click ejecuta este comando. Si también tiene URL, la abre 1,5 s después.</p>
+      </div>
+      <div class="field">
         <label for="f-cat">Categoría</label>
         <select id="f-cat">
           <option value="prod">Productividad</option>
@@ -298,16 +303,16 @@
 
   // ---- apps predeterminadas (editá las rutas según donde corras cada una) ----
   var DEFAULTS = [
-    { id:id(), cat:"prod", name:"Orden y Progreso", desc:"Tareas y pagos del negocio, calendario y caja", url:"" },
-    { id:id(), cat:"prod", name:"Claridad", desc:"Gestión de tareas y pagos para freelancers", url:"" },
+    { id:id(), cat:"prod", name:"Orden y Progreso", desc:"Tareas y pagos del negocio, calendario y caja", url:"", cmd:"" },
+    { id:id(), cat:"prod", name:"Claridad", desc:"Gestión de tareas y pagos para freelancers", url:"", cmd:"" },
 
-    { id:id(), cat:"rrhh", name:"Sueldos AF", desc:"Liquidación de sueldos, roster y novedades", url:"http://localhost:5051" },
-    { id:id(), cat:"rrhh", name:"Divisor de recibos", desc:"Separa el PDF mensual en recibos por empleado", url:"" },
-    { id:id(), cat:"rrhh", name:"Novedades", desc:"Carga de novedades del mes", url:"" },
+    { id:id(), cat:"rrhh", name:"Sueldos AF", desc:"Liquidación de sueldos, roster y novedades", url:"http://localhost:5051", cmd:"" },
+    { id:id(), cat:"rrhh", name:"Divisor de recibos", desc:"Separa el PDF mensual en recibos por empleado", url:"", cmd:"" },
+    { id:id(), cat:"rrhh", name:"Novedades", desc:"Carga de novedades del mes", url:"", cmd:"" },
 
-    { id:id(), cat:"fin", name:"Mi Orden Financiero", desc:"Finanzas personales ARS/USD, tarjetas y metas", url:"" },
-    { id:id(), cat:"fin", name:"Cashflow AF", desc:"Cierres diarios y flujo de caja", url:"https://cashflow-af.vercel.app" },
-    { id:id(), cat:"fin", name:"Facturación Total", desc:"ERP y gestión de caja general", url:"" }
+    { id:id(), cat:"fin", name:"Mi Orden Financiero", desc:"Finanzas personales ARS/USD, tarjetas y metas", url:"", cmd:"" },
+    { id:id(), cat:"fin", name:"Cashflow AF", desc:"Cierres diarios y flujo de caja", url:"https://cashflow-af.vercel.app", cmd:"" },
+    { id:id(), cat:"fin", name:"Facturación Total", desc:"ERP y gestión de caja general", url:"", cmd:"" }
   ];
 
   function id(){ return "a" + Math.random().toString(36).slice(2,9); }
@@ -341,6 +346,10 @@
   function prettyUrl(u){
     if(!u) return "Sin dirección — configurala";
     return u.replace(/^https?:\/\//,"").replace(/^file:\/\/\//,"");
+  }
+  function prettyCmd(c){
+    if(!c) return "";
+    return c.split(/[\/\\]/).pop() || c;
   }
 
   var board = document.getElementById("board");
@@ -380,15 +389,26 @@
       } else {
         list.forEach(function(a){
           var hasUrl = !!a.url;
+          var hasCmd = !!(a.cmd);
+
+          var svgLink = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>';
+          var svgCmd  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>';
+
+          var footerLine;
+          if(hasCmd){
+            footerLine = '<div class="url">'+svgCmd+'<span>'+esc(prettyCmd(a.cmd))+'</span></div>';
+          } else if(hasUrl){
+            footerLine = '<div class="url">'+svgLink+'<span>'+esc(prettyUrl(a.url))+'</span></div>';
+          } else {
+            footerLine = '<div class="url unset">'+svgLink+'<span>'+esc(prettyUrl(a.url))+'</span></div>';
+          }
+
           var cardInner =
             '<div class="card-top">'+
               '<div class="ico ico-'+c.cls+'">'+esc(initials(a.name))+'</div>'+
               '<div style="min-width:0"><h3>'+esc(a.name)+'</h3>'+
               (a.desc?'<div class="desc">'+esc(a.desc)+'</div>':'')+'</div>'+
-            '</div>'+
-            '<div class="url'+(hasUrl?'':' unset')+'">'+
-              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>'+
-              '<span>'+esc(prettyUrl(a.url))+'</span></div>';
+            '</div>'+footerLine;
 
           var actions =
             '<div class="card-actions">'+
@@ -396,7 +416,10 @@
               '<button class="icon-btn del" data-del="'+a.id+'" title="Borrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>'+
             '</div>';
 
-          if(hasUrl){
+          if(hasCmd){
+            html += '<div class="card cat-'+c.cls+'" data-cmd="'+esc(a.cmd)+'" data-url="'+esc(a.url||'')+'" style="cursor:pointer">'+
+              cardInner+actions+'</div>';
+          } else if(hasUrl){
             html += '<div class="card cat-'+c.cls+'">'+
               '<a class="card-link" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+cardInner+'</a>'+
               actions+'</div>';
@@ -419,8 +442,9 @@
     document.getElementById("modalTitle").textContent = app ? "Editar app" : "Agregar app";
     document.getElementById("f-name").value = app ? app.name : "";
     document.getElementById("f-desc").value = app ? app.desc : "";
-    document.getElementById("f-url").value  = app ? app.url  : "";
-    document.getElementById("f-cat").value  = app ? app.cat  : (presetCat||"prod");
+    document.getElementById("f-url").value  = app ? app.url       : "";
+    document.getElementById("f-cmd").value  = app ? (app.cmd||"") : "";
+    document.getElementById("f-cat").value  = app ? app.cat       : (presetCat||"prod");
     overlay.classList.add("show");
     setTimeout(function(){ document.getElementById("f-name").focus(); },50);
   }
@@ -433,6 +457,7 @@
       name:name,
       desc:document.getElementById("f-desc").value.trim(),
       url: document.getElementById("f-url").value.trim(),
+      cmd: document.getElementById("f-cmd").value.trim(),
       cat: document.getElementById("f-cat").value
     };
     if(editingId){
@@ -469,6 +494,23 @@
       return;
     }
     if(addc){ openModal(null, addc.getAttribute("data-addcat")); return; }
+    // Ejecutar comando (y abrir URL si tiene) al hacer click en la card
+    var cmdEl = e.target.closest("[data-cmd]");
+    if(cmdEl && !ed){
+      e.preventDefault();
+      var cmd = cmdEl.getAttribute("data-cmd");
+      var url = cmdEl.getAttribute("data-url");
+      if(cmd && window.__TAURI_INTERNALS__){
+        window.__TAURI_INTERNALS__.invoke("run_cmd", {cmd: cmd})
+          .then(function(){
+            if(url) setTimeout(function(){
+              window.__TAURI_INTERNALS__.invoke("open_url", {url: url});
+            }, 1500);
+          })
+          .catch(function(err){ alert("No se pudo iniciar: " + err); });
+      }
+      return;
+    }
     if(ed){
       e.preventDefault();
       var a = apps.find(function(x){ return x.id===ed.getAttribute("data-edit"); });
